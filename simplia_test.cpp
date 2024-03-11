@@ -45,15 +45,7 @@ int main(int argc, char **argv) {
   for (unsigned int frame = 0; (frame < 2) && ok; ++frame) {
     Particle inp[1]; inp[0].hwPt=50*4;
     Particle outp[32];
-    ap_uint<589> rand=xoshiro256ref(false, seed);
-    for (int i = 0; i <8; ++i){
-      rand=rand << 64;
-      rand+=xoshiro256ref(false, seed);
-    }
-    rand=rand << 10;
-    rand+=(xoshiro256ref(false, seed) & 1023);
-
-    shower( inp, outp, rand);
+    shower( inp, outp, frame==0);
     printf("We have one event\n");
     for (int i=0; i < 32; ++i){
       printf("   Particle with hwPt=%d\n", outp[i].hwPt);
