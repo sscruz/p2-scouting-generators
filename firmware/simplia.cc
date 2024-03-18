@@ -183,16 +183,15 @@ void shower(const Particle theparticle[1], Particle out_particles[max_depth2], b
   //#pragma HLS array_partition variable=rand         complete
   ap_uint<64> seed=0x6f4a3c2b1d8e79af;
   ap_uint<random_bits_per_splitting*(max_depth2-1)> rand=xoshiro256hw(isFirst, seed);
-
-  constexpr int n_xoshiro_calls=(random_bits_per_splitting*(max_depth2-1)/64)-1;
-  constexpr int remainder=random_bits_per_splitting*(max_depth2-1)%64;
-  for (int i=0; i<n_xoshiro_calls; ++i){
-    rand=rand << 64;
-    rand+=xoshiro256hw(false, seed);
-  }
-  rand=rand << remainder;
-  rand+=(xoshiro256hw(false, seed) & ((1 << remainder)-1));
-  
+  rand+=xoshiro256hw2(isFirst, seed+1) << 64;
+  rand+=xoshiro256hw3(isFirst, seed+2) << 128;
+  rand+=xoshiro256hw(isFirst, seed) << 192;
+  rand+=xoshiro256hw2(isFirst, seed+1) << 256;
+  rand+=xoshiro256hw3(isFirst, seed+2) << 320;
+  rand+=xoshiro256hw(isFirst, seed) << 384;
+  rand+=xoshiro256hw2(isFirst, seed+1) <<448;
+  rand+=xoshiro256hw3(isFirst, seed+2) << 512;
+  rand+=(xoshiro256hw(isFirst, seed) & 16383) << 576;
   shower_step<0,1,random_bits_per_splitting*(max_depth2-1)>( theparticle,   rand, out_particles);
 
 }
