@@ -5,6 +5,8 @@
 
 //#define DEBUG
 
+
+
 void energy_splitting( ap_uint<lut_size> random, x_t &x_qqg, x_t &x_ggg, x_t& x_gqq ){ // precision of the random given by LUT size
 
   x_qqg=table_qqg[int(random)];
@@ -29,11 +31,10 @@ void _lut_sin_cos_init( etaphi_t table_cos[512], etaphi_t table_sin[512])
     table_cos[i]=cos( i*2*3.1415/512)*512;  // cos and sin between -512 and 512=2^9
     table_sin[i]=sin( i*2*3.1415/512)*512;
   }
-
 }
 
 
-void split( Particle inp, Particle& p1, Particle& p2, ap_uint<random_bits_per_splitting> rand)
+void split( Particle inp, Particle& p1, Particle& p2, ap_uint<random_bits_per_splitting> rand, const pt_t min_particle_energy)
 {
 #ifdef DEBUG
   printf("We are splitting particle with pt %d\n", inp.hwPt);
@@ -51,7 +52,6 @@ void split( Particle inp, Particle& p1, Particle& p2, ap_uint<random_bits_per_sp
   x_t x_qqg,x_ggg, x_gqq, x_select;
   bool p1_type, p2_type;
   energy_splitting( (rand & 511), x_qqg,x_ggg, x_gqq);
-
   switch(inp.hwPartType + inp.hwPartType*((rand & 512) != 0)){
   case 0:
     x_select=x_qqg;
@@ -73,7 +73,7 @@ void split( Particle inp, Particle& p1, Particle& p2, ap_uint<random_bits_per_sp
 
 #ifdef DEBUG
   printf("Out particle types are %d %d \n", p1_type, p2_type);
-  printf("Splitting value is %d \n", x_select);
+  printf("Splitting value is %d ", x_select); 
 #endif
 
   
@@ -86,7 +86,7 @@ void split( Particle inp, Particle& p1, Particle& p2, ap_uint<random_bits_per_sp
 #endif
 
   
-  pt_t min_particle_energy=2*4; // 2 gev in 0.25 units
+  //   pt_t min_particle_energy=2*4; // 2 gev in 0.25 units // now its an input
   if (p1pt<min_particle_energy || p2pt<min_particle_energy){ // we dont branch now, but may branch in the future
     p1=inp;
     p2.hwIsStable=1; // other members are zero by default
@@ -121,77 +121,117 @@ void split( Particle inp, Particle& p1, Particle& p2, ap_uint<random_bits_per_sp
   return; 
 }
 
+namespace shower_tools{
 
-
-template<unsigned int depth, unsigned int depth2, unsigned int n_random_bits>
-void shower_step( const Particle in_particles[depth2],  const ap_uint<n_random_bits> rand, Particle out_particles[max_depth2])
-{
+  template<unsigned int depth, unsigned int depth2, unsigned int n_random_bits, unsigned int max_depth, unsigned int max_depth2>
+  struct helper {
+    static void shower_step( const Particle in_particles[depth2],  const ap_uint<n_random_bits> rand, Particle out_particles[max_depth2*2], const pt_t min_particle_energy)
+    {
 #pragma HLS array_partition variable=out_particles complete
 #pragma HLS inline off
 #ifdef DEBUG
-  printf("\n\n\n\nWe are in depth %d\n\n", depth);
+      printf("\n\n\n\nWe are in depth %d\n\n", depth);
 #endif
-  Particle next_particles[depth2*2];
-  for (unsigned int ipart=0; ipart < depth2; ++ipart){
+      Particle next_particles[depth2*2];
+      for (unsigned int ipart=0; ipart < depth2; ++ipart){
 #pragma HLS unroll
-    Particle p1,p2;
-    split( in_particles[ipart], p1, p2, rand(random_bits_per_splitting*(ipart+1)-1, random_bits_per_splitting*ipart));  // pass n least significant bits
-    next_particles[ipart]=p1;
-    next_particles[ipart+depth2]=p2;
-
-  }
+	Particle p1,p2;
 #ifdef DEBUG
-  assert( (n_random_bits-random_bits_per_splitting*depth2) == random_bits_per_splitting*(max_depth2-depth2*2));
+	printf("Passing bits between %d and %d\n", random_bits_per_splitting*(ipart+1)-1, random_bits_per_splitting*ipart);
 #endif 
+	split( in_particles[ipart], p1, p2, rand(random_bits_per_splitting*(ipart+1)-1, random_bits_per_splitting*ipart), min_particle_energy);  // pass n least significant bits
+	next_particles[ipart]=p1;
+	next_particles[ipart+depth2]=p2;
+      }
 
-  
-  shower_step<depth+1, depth2*2, random_bits_per_splitting*(max_depth2-depth2*2)>( next_particles, rand(n_random_bits-1,random_bits_per_splitting*depth2), out_particles );
-  
-}
+#ifdef DEBUG
+      assert( (n_random_bits-random_bits_per_splitting*depth2) == random_bits_per_splitting*(max_depth2*2-depth2*2));
+      ap_uint<random_bits_per_splitting*(max_depth2*2-depth2*2)> topass=rand(n_random_bits-1,random_bits_per_splitting*depth2);
+      print_ap( rand);
+      print_ap( topass);
+      printf("We have %d random bits. passing bits between %d and %d to the next iteration. That should be a total of %d ", n_random_bits, n_random_bits-1, random_bits_per_splitting*depth2, random_bits_per_splitting*(max_depth2*2-depth2*2)); 
+#endif 
+      
 
-template<>
-void shower_step<max_depth-1,max_depth2/2,random_bits_per_splitting*max_depth2/2>( const Particle in_particles[max_depth2/2], const ap_uint<random_bits_per_splitting*max_depth2/2> rand, Particle out_particles[max_depth2])
-{
+      helper<depth+1, depth2*2, random_bits_per_splitting*(max_depth2*2-depth2*2),max_depth,max_depth2>::shower_step( next_particles, rand(n_random_bits-1,random_bits_per_splitting*depth2), out_particles, min_particle_energy);
+    
+    }
+  };
+  
+  template<unsigned int max_depth, unsigned int max_depth2, unsigned int n_random_bits>
+  struct helper<max_depth,max_depth2,n_random_bits,max_depth,max_depth2>{
+    static void shower_step( const Particle in_particles[max_depth2/2], const ap_uint<n_random_bits> rand, Particle out_particles[max_depth2*2], pt_t min_particle_energy)
+    {
 #pragma HLS array_partition variable=out_particles complete
 #pragma HLS inline off
 #ifdef DEBUG
-  printf("\n\n\n\n Final depth  \n\n");
+      printf("\n\n\n\n Final depth. We have %d random bits  \n\n", n_random_bits);
 #endif
-  for (unsigned int ipart=0; ipart < max_depth2/2; ++ipart){
+      for (unsigned int ipart=0; ipart < max_depth2; ++ipart){
 #pragma HLS unroll
-    Particle p1,p2;
-    split( in_particles[ipart], p1, p2, rand(random_bits_per_splitting*(ipart+1)-1, random_bits_per_splitting*ipart)  ); // pass n least significant bits
+	Particle p1,p2;
+	split( in_particles[ipart], p1, p2, rand(random_bits_per_splitting*(ipart+1)-1, random_bits_per_splitting*ipart), min_particle_energy  ); // pass n least significant bits
 #ifdef DEBUG
-    printf("    -> setting ipart %d and %d to %d and %d\n", ipart, ipart+max_depth2/2, p1.hwPt, p2.hwPt);
+	printf("    -> setting ipart %d and %d to %d and %d\n", ipart, ipart+max_depth2/2, p1.hwPt, p2.hwPt);
 #endif
-    out_particles[ipart]=p1;
-    out_particles[(int) ipart+max_depth2/2]=p2;
+	out_particles[ipart]=p1;
+	out_particles[(int) ipart+max_depth2]=p2;
+	
+      }
 
-  }
+      // for (int i=0; i<32;++i){
+      // 	Particle p1; p1.hwPt=in_particles[0].hwPt;
+      // 	out_particles[i]=p1;
+      // }
 
-  return;
+      
+      return;
+  
+    }
+  };
+
+  
   
 }
 
 
-void shower(const Particle theparticle[1], Particle out_particles[max_depth2], bool isFirst)
+
+// random_bits_per_splitting*(max_depth2-1)
+
+constexpr int int_ceil(const float f)
+{
+    return (f > static_cast<int>(f)) ? static_cast<int>(f) + 1 : static_cast<int>(f);
+}
+
+template<unsigned int max_depth,unsigned int max_depth2, unsigned int generator_offset>
+void shower_template(const Particle theparticle[1], Particle out_particles[max_depth2*2], const pt_t min_particle_energy)
 {
 
 #pragma HLS pipeline II=8
 #pragma HLS array_partition variable=theparticle  complete
-#pragma HLS array_partition variable=out_particles complete 
-  //#pragma HLS array_partition variable=rand         complete
-  ap_uint<64> seed=0x6f4a3c2b1d8e79af;
-  ap_uint<random_bits_per_splitting*(max_depth2-1)> rand=xoshiro256hw(isFirst, seed);
-  rand+=xoshiro256hw2(isFirst, seed+1) << 64;
-  rand+=xoshiro256hw3(isFirst, seed+2) << 128;
-  rand+=xoshiro256hw(isFirst, seed) << 192;
-  rand+=xoshiro256hw2(isFirst, seed+1) << 256;
-  rand+=xoshiro256hw3(isFirst, seed+2) << 320;
-  rand+=xoshiro256hw(isFirst, seed) << 384;
-  rand+=xoshiro256hw2(isFirst, seed+1) <<448;
-  rand+=xoshiro256hw3(isFirst, seed+2) << 512;
-  rand+=(xoshiro256hw(isFirst, seed) & 16383) << 576;
-  shower_step<0,1,random_bits_per_splitting*(max_depth2-1)>( theparticle,   rand, out_particles);
+#pragma HLS array_partition variable=out_particles complete
+  constexpr int n_random_numbers=int_ceil(random_bits_per_splitting*(max_depth2*2-1)/64.);
+  constexpr int n_instances=int_ceil(float(n_random_numbers)/8);
+  ap_uint<random_bits_per_splitting*(max_depth2*2-1)> rand=generator::helper<n_random_numbers,n_instances,random_bits_per_splitting*(max_depth2*2-1),generator_offset>::get_large_random(); 
+#ifdef DEBUG
+  printf("Mega random is ");
+  print_ap(rand);
+#endif
+  shower_tools::helper<0,1,random_bits_per_splitting*(max_depth2*2-1),max_depth,max_depth2>::shower_step( theparticle,   rand, out_particles, min_particle_energy);
 
 }
+
+void shower(const Particle theparticle[1], Particle out_particles[32])
+{
+#pragma HLS pipeline II=8
+#pragma HLS array_partition variable=theparticle  complete
+#pragma HLS array_partition variable=out_particles complete
+  const pt_t min_particle_energy=2*4;
+  return shower_template<4,16,0>(theparticle, out_particles, min_particle_energy); // max_depth is max_depth-1
+}
+
+
+
+
+
+
