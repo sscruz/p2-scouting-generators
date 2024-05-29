@@ -123,7 +123,7 @@ void split( Particle inp, Particle& p1, Particle& p2, ap_uint<random_bits_per_sp
 
 namespace shower_tools{
 
-  template<unsigned int depth, unsigned int depth2, unsigned int n_random_bits, unsigned int max_depth, unsigned int max_depth2>
+  template<unsigned int depth2, unsigned int n_random_bits, unsigned int max_depth2>
   struct helper {
     static void shower_step( const Particle in_particles[depth2],  const ap_uint<n_random_bits> rand, Particle out_particles[max_depth2*2], const pt_t min_particle_energy)
     {
@@ -153,13 +153,13 @@ namespace shower_tools{
 #endif 
       
 
-      helper<depth+1, depth2*2, random_bits_per_splitting*(max_depth2*2-depth2*2),max_depth,max_depth2>::shower_step( next_particles, rand(n_random_bits-1,random_bits_per_splitting*depth2), out_particles, min_particle_energy);
+      helper<depth2*2, random_bits_per_splitting*(max_depth2*2-depth2*2),max_depth2>::shower_step( next_particles, rand(n_random_bits-1,random_bits_per_splitting*depth2), out_particles, min_particle_energy);
     
     }
   };
   
-  template<unsigned int max_depth, unsigned int max_depth2, unsigned int n_random_bits>
-  struct helper<max_depth,max_depth2,n_random_bits,max_depth,max_depth2>{
+  template<unsigned int max_depth2, unsigned int n_random_bits>
+  struct helper<max_depth2,n_random_bits,max_depth2>{
     static void shower_step( const Particle in_particles[max_depth2/2], const ap_uint<n_random_bits> rand, Particle out_particles[max_depth2*2], pt_t min_particle_energy)
     {
 #pragma HLS array_partition variable=out_particles complete
@@ -179,11 +179,6 @@ namespace shower_tools{
 	
       }
 
-      // for (int i=0; i<32;++i){
-      // 	Particle p1; p1.hwPt=in_particles[0].hwPt;
-      // 	out_particles[i]=p1;
-      // }
-
       
       return;
   
@@ -194,7 +189,19 @@ namespace shower_tools{
   
 }
 
+template<unsigned int max_depth2>
+void shower_template(const Particle theparticle, Particle out_particles[max_depth2*2], const pt_t min_particle_energy, ap_uint<random_bits_per_splitting*(max_depth2*2-1)> rand)
+{
 
+#pragma HLS pipeline II=8
+#pragma HLS array_partition variable=out_particles complete
+#ifdef DEBUG
+  print_ap(rand);
+#endif
+  Particle p[1]; p[0]=theparticle;
+  shower_tools::helper<1,random_bits_per_splitting*(max_depth2*2-1),max_depth2>::shower_step( p,   rand, out_particles, min_particle_energy);
+
+}
 
 // random_bits_per_splitting*(max_depth2-1)
 
@@ -203,34 +210,15 @@ constexpr int int_ceil(const float f)
     return (f > static_cast<int>(f)) ? static_cast<int>(f) + 1 : static_cast<int>(f);
 }
 
-template<unsigned int max_depth,unsigned int max_depth2, unsigned int generator_offset>
-void shower_template(const Particle theparticle[1], Particle out_particles[max_depth2*2], const pt_t min_particle_energy)
-{
 
-#pragma HLS pipeline II=8
-#pragma HLS array_partition variable=theparticle  complete
-#pragma HLS array_partition variable=out_particles complete
-  constexpr int n_random_numbers=int_ceil(random_bits_per_splitting*(max_depth2*2-1)/64.);
-  constexpr int n_instances=int_ceil(float(n_random_numbers)/8);
-  ap_uint<random_bits_per_splitting*(max_depth2*2-1)> rand=generator::helper<n_random_numbers,n_instances,random_bits_per_splitting*(max_depth2*2-1),generator_offset>::get_large_random(); 
-#ifdef DEBUG
-  printf("Mega random is ");
-  print_ap(rand);
-#endif
-  shower_tools::helper<0,1,random_bits_per_splitting*(max_depth2*2-1),max_depth,max_depth2>::shower_step( theparticle,   rand, out_particles, min_particle_energy);
 
-}
-
-void shower(const Particle theparticle[1], Particle out_particles[32])
+void shower(const Particle theparticle, Particle out_particles[32], ap_uint<589> rand)
 {
 #pragma HLS pipeline II=8
-#pragma HLS array_partition variable=theparticle  complete
 #pragma HLS array_partition variable=out_particles complete
   const pt_t min_particle_energy=2*4;
-  return shower_template<4,16,0>(theparticle, out_particles, min_particle_energy); // max_depth is max_depth-1
+  return shower_template<16>(theparticle, out_particles, min_particle_energy, rand); // max_depth is max_depth-1
 }
-
-
 
 
 

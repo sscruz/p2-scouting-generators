@@ -23,7 +23,6 @@ set_top pileup_generator
 # load source code for synthesis
 
 add_files firmware/data.cc -cflags ${cflags}
-add_files firmware/xoshiro256.cc -cflags ${cflags}
 add_files firmware/simplia.cc -cflags ${cflags}
 add_files firmware/pileup.cc -cflags ${cflags}
 

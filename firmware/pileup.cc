@@ -1,4 +1,5 @@
 #include "pileup.h"
+#include "simplia.h"
 #include <cmath>
 
 // rng breakdown
@@ -15,11 +16,11 @@ void _lut_pt_exp_init( pt_t pt_exp_lut[512] ){
   
 }
 
-void get_pile_up_jets( Particle jets[n_pu_jets] ){
+void get_pile_up_jets( Particle jets[n_pu_jets], ap_uint<n_pu_jets*(lut_size+20)> rand ){
 
-  ap_uint<n_pu_jets*lut_size> rand_pt =generator::helper<5,2,n_pu_jets*lut_size,0>::get_large_random(); // 5*64 bits, using 2 instances of the generator
-  ap_uint<n_pu_jets*10>       rand_eta=generator::helper<5,2,n_pu_jets*nbits_etaphi,2>::get_large_random();
-  ap_uint<n_pu_jets*10>       rand_phi=generator::helper<5,2,n_pu_jets*nbits_etaphi,4>::get_large_random();
+  ap_uint<n_pu_jets*lut_size> rand_pt =rand(n_pu_jets*lut_size-1,0);
+  ap_uint<n_pu_jets*10>       rand_eta=rand(10+n_pu_jets*lut_size-1,n_pu_jets*lut_size);
+  ap_uint<n_pu_jets*10>       rand_phi=rand(20+n_pu_jets*lut_size-1,10+n_pu_jets*lut_size);
   pt_t pt_exp_lut[512]; _lut_pt_exp_init( pt_exp_lut );
   
   for (int ijet=0; ijet<n_pu_jets; ++ijet){
@@ -33,13 +34,16 @@ void get_pile_up_jets( Particle jets[n_pu_jets] ){
 
 }
 
-void pileup_generator(Particle out_particles[n_pu_jets*pu_jet_npart])
+
+
+void pileup_generator(Particle out_particles[n_pu_jets*pu_jet_npart], ap_uint<random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets> bigrand, 
+                      ap_uint<n_pu_jets*(lut_size+20)> jetrand)
 {
 #pragma HLS pipeline II=8
 #pragma HLS array_partition variable=out_particles complete 
   //printf("Im here\n");
-  Particle jets[n_pu_jets]; get_pile_up_jets( jets );
+  Particle jets[n_pu_jets]; get_pile_up_jets( jets, jetrand);
   const pt_t min_particle_energy=2; // 0.5 in 0.25 GeV units
-  shower_n_jets::helper<pu_jet_depth,pu_jet_depth2,6,n_pu_jets>::call( jets, out_particles,  min_particle_energy );
+  shower_n_jets::helper<pu_jet_depth2,n_pu_jets>::call( jets, out_particles,  min_particle_energy, bigrand );
   //printf("Im done\n");
 }

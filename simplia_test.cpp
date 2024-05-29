@@ -3,18 +3,23 @@
 #include <cstdio>
 #include <cstdint>
 
-// From https://en.wikipedia.org/wiki/Xorshift#xoshiro256**
-// Adapted from https://prng.di.unimi.it/xoshiro256starstar.c
-// David Blackman and Sebastiano Vigna (vigna@acm.org)
+
 
 int main(int argc, char **argv) {
   bool ok = true;
   int seed=42;
+  Xoshiro256ssRef xoshiro256ref;
 
   for (unsigned int frame = 0; (frame < 200) && ok; ++frame) {
-    Particle inp[1]; inp[0].hwPt=50*4;
+    Particle inp; inp.hwPt=50*4;
     Particle outp[32];
-    shower( inp, outp );
+    ap_uint<569> rand=xoshiro256ref(frame == 0, seed);
+    for (int i=0; i<8; ++i){
+      rand = (rand << 64) + xoshiro256ref(false, seed);
+    }
+    rand = (rand << 13) + xoshiro256ref(false, seed) & ((1<<13)-1);
+    // print_ap(rand);
+    shower( inp, outp, rand );
     printf("\n\n");
     printf("We have one event\n");
     for (int i=0; i < 32; ++i){

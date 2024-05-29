@@ -1,5 +1,6 @@
 #ifndef ALGO_DATA_H
 #define ALGO_DATA_H
+#define AP_INT_MAX_W 2000
 
 #include "ap_int.h"
 

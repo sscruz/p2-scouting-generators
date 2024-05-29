@@ -23,7 +23,6 @@ set_top shower
 # load source code for synthesis
 
 add_files firmware/simplia.cc -cflags ${cflags}
-add_files firmware/xoshiro256.cc -cflags ${cflags}
 # load source code for the testbench
 add_files -tb simplia_test.cpp -cflags ${cflags}
 
