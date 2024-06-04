@@ -3,7 +3,8 @@
 #define AP_INT_MAX_W 2000
 
 #include "ap_int.h"
-#include "fromcmssw.h"
+#include "fromcmssw.h" 
+
 
 #define n_pu_jets 30
 #define pu_jet_depth 1
@@ -18,6 +19,8 @@
 #define pu_jet_pt_decay 5.0
 #define random_bits_per_splitting 19
 #define lut_size 9
+
+typedef ap_uint<64> PackedPuppiObj;
 
 template<unsigned int nbits>
 void print_ap( ap_uint<nbits> bits)
@@ -42,6 +45,11 @@ struct Parton {
   etaphi_t hwPhi=0;
   bool     hwPartType=0; // 1 gluon, 0 quark
   bool     hwIsStable=0;
+
+  inline bool operator>(const Parton &other) const { return hwPt > other.hwPt; }
+  inline bool operator<(const Parton &other) const { return hwPt < other.hwPt; }
+
+
 };
 
 

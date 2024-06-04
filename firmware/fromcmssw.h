@@ -12,7 +12,6 @@ namespace l1ct {
   typedef ap_ufixed<9, 1, AP_RND_CONV, AP_WRAP> puppiWgt_t;
   typedef ap_uint<6> emid_t;
 
-
 struct ParticleID {
   ap_uint<3> bits;
   enum PID {
@@ -265,7 +264,10 @@ template <typename U, typename T>
     //   setHwEmID(src.hwEmID);
     // }
 
-    //int intPt() const { return Scales::intPt(hwPt); }
+    int intPt() const { 
+      ap_uint<pt_t::width> rawPt = hwPt.range();
+      return rawPt.to_int();
+    }
     int intEta() const { return hwEta.to_int(); }
     int intPhi() const { return hwPhi.to_int(); }
     // float floatPt() const { return Scales::floatPt(hwPt); }

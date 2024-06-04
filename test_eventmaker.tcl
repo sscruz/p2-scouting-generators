@@ -19,7 +19,7 @@ file copy -force "proj_simplia_luts/solution/csim/build/luts.h" "firmware/luts.h
 
 open_project -reset "proj_eventmaker"
 # specify the name of the function to synthetize
-set_top event_maker_pileup
+set_top bitpattern_pileup
 # load source code for synthesis
 
 add_files firmware/data.cc -cflags ${cflags}
@@ -28,6 +28,7 @@ add_files firmware/pileup.cc -cflags ${cflags}
 add_files firmware/eventmaker.cc -cflags ${cflags}
 
 # load source code for the testbench
+add_files -tb pattern_serializer.cpp -cflags ${cflags}
 add_files -tb test_eventmaker.cpp -cflags ${cflags}
 
 # creae a solution (i.e. a hardware configuration for synthesis)

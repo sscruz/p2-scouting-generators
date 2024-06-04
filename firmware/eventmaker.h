@@ -46,9 +46,10 @@ void hadronize_event_template(Parton in_partons[multiplicity], l1ct::PuppiObj ou
 
 }
 
-void hadronize_event(Parton in_partons[50], l1ct::PuppiObj out_particles[50], ap_uint<10> vertex_rand, ap_uint<8*50> vz_resolution_rand, ap_uint<500> hadronization_rand);
+void hadronize_event(Parton in_partons[n_pu_jets*pu_jet_npart], l1ct::PuppiObj out_particles[n_pu_jets*pu_jet_npart], ap_uint<10> vertex_rand, ap_uint<8*n_pu_jets*pu_jet_npart> vz_resolution_rand, ap_uint<n_pu_jets*pu_jet_npart*10> hadronization_rand);
 
 void event_maker_pileup( l1ct::PuppiObj out_particles[n_pu_jets*pu_jet_npart],  ap_uint<10> vertex_rand, ap_uint<8*n_pu_jets*pu_jet_npart> vz_resolution_rand, ap_uint<n_pu_jets*pu_jet_npart*10> hadronization_rand, ap_uint<random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets> bigrand, ap_uint<n_pu_jets*(lut_size+20)>  jetrand);
+void bitpattern_pileup( PackedPuppiObj out_particles[n_pu_jets*pu_jet_npart],  ap_uint<10> vertex_rand, ap_uint<8*n_pu_jets*pu_jet_npart> vz_resolution_rand, ap_uint<n_pu_jets*pu_jet_npart*10> hadronization_rand, ap_uint<random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets> bigrand, ap_uint<n_pu_jets*(lut_size+20)>  jetrand);
 
 
 #endif
