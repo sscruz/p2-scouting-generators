@@ -34,7 +34,7 @@ void _lut_sin_cos_init( etaphi_t table_cos[512], etaphi_t table_sin[512])
 }
 
 
-void split( Particle inp, Particle& p1, Particle& p2, ap_uint<random_bits_per_splitting> rand, const pt_t min_particle_energy)
+void split( Parton inp, Parton& p1, Parton& p2, ap_uint<random_bits_per_splitting> rand, const pt_t min_particle_energy)
 {
 #ifdef DEBUG
   printf("We are splitting particle with pt %d\n", inp.hwPt);
@@ -43,7 +43,7 @@ void split( Particle inp, Particle& p1, Particle& p2, ap_uint<random_bits_per_sp
     p1=inp;
     p2.hwIsStable=1; // other members are zero by default
 #ifdef DEBUG
-    printf("Particle is stable\n");
+    printf("Parton is stable\n");
 #endif
   
     return;
@@ -125,17 +125,17 @@ namespace shower_tools{
 
   template<unsigned int depth2, unsigned int n_random_bits, unsigned int max_depth2>
   struct helper {
-    static void shower_step( const Particle in_particles[depth2],  const ap_uint<n_random_bits> rand, Particle out_particles[max_depth2*2], const pt_t min_particle_energy)
+    static void shower_step( const Parton in_particles[depth2],  const ap_uint<n_random_bits> rand, Parton out_particles[max_depth2*2], const pt_t min_particle_energy)
     {
 #pragma HLS array_partition variable=out_particles complete
 #pragma HLS inline off
 #ifdef DEBUG
       printf("\n\n\n\nWe are in depth %d\n\n", depth);
 #endif
-      Particle next_particles[depth2*2];
+      Parton next_particles[depth2*2];
       for (unsigned int ipart=0; ipart < depth2; ++ipart){
 #pragma HLS unroll
-	Particle p1,p2;
+	Parton p1,p2;
 #ifdef DEBUG
 	printf("Passing bits between %d and %d\n", random_bits_per_splitting*(ipart+1)-1, random_bits_per_splitting*ipart);
 #endif 
@@ -160,7 +160,7 @@ namespace shower_tools{
   
   template<unsigned int max_depth2, unsigned int n_random_bits>
   struct helper<max_depth2,n_random_bits,max_depth2>{
-    static void shower_step( const Particle in_particles[max_depth2/2], const ap_uint<n_random_bits> rand, Particle out_particles[max_depth2*2], pt_t min_particle_energy)
+    static void shower_step( const Parton in_particles[max_depth2/2], const ap_uint<n_random_bits> rand, Parton out_particles[max_depth2*2], pt_t min_particle_energy)
     {
 #pragma HLS array_partition variable=out_particles complete
 #pragma HLS inline off
@@ -169,7 +169,7 @@ namespace shower_tools{
 #endif
       for (unsigned int ipart=0; ipart < max_depth2; ++ipart){
 #pragma HLS unroll
-	Particle p1,p2;
+	Parton p1,p2;
 	split( in_particles[ipart], p1, p2, rand(random_bits_per_splitting*(ipart+1)-1, random_bits_per_splitting*ipart), min_particle_energy  ); // pass n least significant bits
 #ifdef DEBUG
 	printf("    -> setting ipart %d and %d to %d and %d\n", ipart, ipart+max_depth2/2, p1.hwPt, p2.hwPt);
@@ -190,7 +190,7 @@ namespace shower_tools{
 }
 
 template<unsigned int max_depth2>
-void shower_template(const Particle theparticle, Particle out_particles[max_depth2*2], const pt_t min_particle_energy, ap_uint<random_bits_per_splitting*(max_depth2*2-1)> rand)
+void shower_template(const Parton theparticle, Parton out_particles[max_depth2*2], const pt_t min_particle_energy, ap_uint<random_bits_per_splitting*(max_depth2*2-1)> rand)
 {
 
 #pragma HLS pipeline II=8
@@ -198,7 +198,7 @@ void shower_template(const Particle theparticle, Particle out_particles[max_dept
 #ifdef DEBUG
   print_ap(rand);
 #endif
-  Particle p[1]; p[0]=theparticle;
+  Parton p[1]; p[0]=theparticle;
   shower_tools::helper<1,random_bits_per_splitting*(max_depth2*2-1),max_depth2>::shower_step( p,   rand, out_particles, min_particle_energy);
 
 }
@@ -212,7 +212,7 @@ constexpr int int_ceil(const float f)
 
 
 
-void shower(const Particle theparticle, Particle out_particles[32], ap_uint<589> rand)
+void shower(const Parton theparticle, Parton out_particles[32], ap_uint<589> rand)
 {
 #pragma HLS pipeline II=8
 #pragma HLS array_partition variable=out_particles complete

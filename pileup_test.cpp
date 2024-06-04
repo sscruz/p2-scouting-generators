@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
   Xoshiro256ssRef xoshiro256ref;
   for (unsigned int frame = 0; (frame < 100000) && ok; ++frame) {
     //printf("Frame %d\n", frame);
-    Particle outp[120];
+    Parton outp[120];
     ap_uint<1710> random_bits1=xoshiro256ref.get_large_random<1710>(frame==0, seed); 
     ap_uint<870> random_bits2=xoshiro256ref.get_large_random<870>(false, seed); 
 
