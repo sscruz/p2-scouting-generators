@@ -30,8 +30,8 @@ l1ct::PuppiObj particle_to_parton(Parton part, ap_uint<10> rand)
 {
   l1ct::PuppiObj ret;
   ret.hwPt(l1ct::pt_t::width-1,0)  = part.hwPt(pt_t::width-1,0); // we can do this because they have the same precision
-  ret.hwEta = part.hwEta << 2; // has two bits more
-  ret.hwPhi = part.hwPhi << 1; // has one bit more 
+  ret.hwEta = part.hwEta * 4; // has two bits more
+  ret.hwPhi = part.hwPhi * 2; // has one bit more 
   ret.hwId  = get_particle_pid(rand);
   return ret;
 

@@ -15,7 +15,9 @@ int main(int argc, char **argv) {
   Xoshiro256ssRef xoshiro256ref;
 
   const unsigned int multiplicity=50;
-  for (unsigned int frame = 0; (frame < 100) && ok; ++frame) {
+  HumanReadablePatternSerializer dumper("output.dump");
+
+  for (unsigned int frame = 0; (frame < 5000) && ok; ++frame) {
 
     PackedPuppiObj out_particles[n_pu_jets*pu_jet_npart];
 
@@ -31,7 +33,6 @@ int main(int argc, char **argv) {
     // now we are gonna store everything 
     l1ct::PuppiObj simplia_particles[n_pu_jets*pu_jet_npart];
     for(int i=0;i<n_pu_jets*pu_jet_npart;++i) simplia_particles[i] = l1ct::PuppiObj::unpack(out_particles[i]);
-    HumanReadablePatternSerializer dumper("-");
     dumper.dump_puppi(n_pu_jets*pu_jet_npart, "ref", simplia_particles);
 
   }
