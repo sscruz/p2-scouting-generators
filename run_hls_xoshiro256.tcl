@@ -15,8 +15,6 @@ set_part {xcku15p-ffva1760-2-e}
 create_clock -period 2.6 
 
 csim_design
-if { [info exists env(DO_SYNTH)] && $env(DO_SYNTH) == "1"  } {
-    csynth_design
-    cosim_design  -trace_level all 
-}
+csynth_design
+
 exit
