@@ -1,6 +1,6 @@
 #include "eventmaker.h"
 #include "pileup.h"
-#include "bitonic_hybrid_sort_ref.h"
+#include "bitonic_hybrid.h"
 
 l1ct::ParticleID get_particle_pid( ap_uint<10> pid_rand){
 
@@ -40,11 +40,11 @@ l1ct::PuppiObj particle_to_parton(Parton part, ap_uint<10> rand)
 void hadronize_event(Parton in_part[n_pu_jets*pu_jet_npart], l1ct::PuppiObj out_particles[n_pu_jets*pu_jet_npart], ap_uint<10> vertex_rand,
                      ap_uint<8*n_pu_jets*pu_jet_npart> vz_resolution_rand, ap_uint<n_pu_jets*pu_jet_npart*10> hadronization_rand )
 {
-#pragma HLS pipeline II=8
+#pragma HLS pipeline II=9
 #pragma HLS array_partition variable=out_particles complete 
   l1ct::PuppiObj presort[n_pu_jets*pu_jet_npart];
   hadronize_event_template<n_pu_jets*pu_jet_npart>(in_part, presort, vertex_rand, vz_resolution_rand, hadronization_rand );
-  folded_hybrid_bitonic_sort_and_crop_ref(n_pu_jets*pu_jet_npart,n_pu_jets*pu_jet_npart, presort, out_particles);
+  hybridBitonicSort::sort<n_pu_jets*pu_jet_npart,n_pu_jets*pu_jet_npart,false>(presort, out_particles);
 
 }
 
@@ -55,13 +55,14 @@ void event_maker_pileup( l1ct::PuppiObj out_particles[n_pu_jets*pu_jet_npart],
                          ap_uint<random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets> shower_rand,
                          ap_uint<n_pu_jets*(lut_size+20)>  jetrand)
 {
-#pragma HLS pipeline II=8
+#pragma HLS pipeline II=9
 #pragma HLS array_partition variable=out_particles complete
 
   Parton partons[n_pu_jets*pu_jet_npart];
   pileup_generator(partons, shower_rand, jetrand);
-  hadronize_event_template<n_pu_jets*pu_jet_npart>(partons, out_particles, vertex_rand, vz_resolution_rand, hadronization_rand);
-
+  l1ct::PuppiObj presort[n_pu_jets*pu_jet_npart];
+  hadronize_event_template<n_pu_jets*pu_jet_npart>(partons, presort, vertex_rand, vz_resolution_rand, hadronization_rand);
+  hybridBitonicSort::sort<n_pu_jets*pu_jet_npart,n_pu_jets*pu_jet_npart,true>(presort, out_particles);
 }
 
 
@@ -73,15 +74,14 @@ void bitpattern_pileup( PackedPuppiObj bitpattern[n_pu_jets*pu_jet_npart],
                         ap_uint<random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets> shower_rand,
                         ap_uint<n_pu_jets*(lut_size+20)>  jetrand)
 {
-#pragma HLS pipeline II=8
+#pragma HLS pipeline II=9
 #pragma HLS array_partition variable=bitpattern complete
 
   l1ct::PuppiObj out_particles[n_pu_jets*pu_jet_npart];
   event_maker_pileup( out_particles, vertex_rand, vz_resolution_rand,
                       hadronization_rand, shower_rand, jetrand);
-            
+
   for (int i=0; i<n_pu_jets*pu_jet_npart; ++i){
-    #pragma HLS unroll 
     bitpattern[i]=out_particles[i].pack();
   }
 }
