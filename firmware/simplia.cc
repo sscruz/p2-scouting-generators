@@ -193,7 +193,7 @@ template<unsigned int max_depth2>
 void shower_template(const Parton theparticle, Parton out_particles[max_depth2*2], const pt_t min_particle_energy, ap_uint<random_bits_per_splitting*(max_depth2*2-1)> rand)
 {
 
-#pragma HLS pipeline II=8
+#pragma HLS pipeline II=9
 #pragma HLS array_partition variable=out_particles complete
 #ifdef DEBUG
   print_ap(rand);
@@ -214,7 +214,7 @@ constexpr int int_ceil(const float f)
 
 void shower(const Parton theparticle, Parton out_particles[32], ap_uint<589> rand)
 {
-#pragma HLS pipeline II=8
+#pragma HLS pipeline II=9
 #pragma HLS array_partition variable=out_particles complete
   const pt_t min_particle_energy=2*4;
   return shower_template<16>(theparticle, out_particles, min_particle_energy, rand); // max_depth is max_depth-1

@@ -39,7 +39,7 @@ void get_pile_up_jets( Parton jets[n_pu_jets], ap_uint<n_pu_jets*(lut_size+20)> 
 void pileup_generator(Parton out_particles[n_pu_jets*pu_jet_npart], ap_uint<random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets> bigrand, 
                       ap_uint<n_pu_jets*(lut_size+20)> jetrand)
 {
-#pragma HLS pipeline II=8
+#pragma HLS pipeline II=9
 #pragma HLS array_partition variable=out_particles complete 
   //printf("Im here\n");
   Parton jets[n_pu_jets]; get_pile_up_jets( jets, jetrand);

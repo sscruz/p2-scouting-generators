@@ -9,7 +9,7 @@ set_top dummy
 add_files -tb simplia_luts.cc -cflags ${cflags}
 open_solution -reset "solution"
 set_part {xcku15p-ffva1760-2-e}
-create_clock -period 2.6 
+create_clock -period 2.777
 
 csim_design
 close_project
@@ -31,9 +31,9 @@ add_files -tb pileup_test.cpp -cflags ${cflags}
 
 # create a solution (i.e. a hardware configuration for synthesis)
 open_solution -reset "solution"
-# set the FPGA (VU9P), and a 320 MHz clock
+# set the FPGA (VU9P), and a 360 MHz clock
 set_part {xcku15p-ffva1760-2-e}
-create_clock -period 2.6 
+create_clock -period 2.777
 
 csim_design
 csynth_design
