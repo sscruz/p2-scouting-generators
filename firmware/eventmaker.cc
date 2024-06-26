@@ -62,7 +62,10 @@ void event_maker_pileup( l1ct::PuppiObj out_particles[n_pu_jets*pu_jet_npart],
   pileup_generator(partons, shower_rand, jetrand);
   l1ct::PuppiObj presort[n_pu_jets*pu_jet_npart];
   hadronize_event_template<n_pu_jets*pu_jet_npart>(partons, presort, vertex_rand, vz_resolution_rand, hadronization_rand);
-  hybridBitonicSort::sort<n_pu_jets*pu_jet_npart,n_pu_jets*pu_jet_npart,true>(presort, out_particles);
+  for (int ichunk=0; ichunk<15; ++ichunk){ // need to add the logic for 8*16
+    #pragma HLS unroll
+    hybridBitonicSort::sort<8,8,true>(presort+ichunk*8, out_particles+ichunk*8);
+  }
 }
 
 
