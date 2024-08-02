@@ -42,13 +42,11 @@ void hadronize_event(Parton in_part[n_pu_jets*pu_jet_npart], l1ct::PuppiObj out_
 {
 #pragma HLS pipeline II=9
 #pragma HLS array_partition variable=out_particles complete 
-  l1ct::PuppiObj presort[n_pu_jets*pu_jet_npart];
-  hadronize_event_template<n_pu_jets*pu_jet_npart>(in_part, presort, vertex_rand, vz_resolution_rand, hadronization_rand );
-  hybridBitonicSort::sort<n_pu_jets*pu_jet_npart,n_pu_jets*pu_jet_npart,false>(presort, out_particles);
+  hadronize_event_template<n_pu_jets*pu_jet_npart>(in_part, out_particles, vertex_rand, vz_resolution_rand, hadronization_rand );
 
 }
 
-void event_maker_pileup( l1ct::PuppiObj out_particles[n_pu_jets*pu_jet_npart],
+void event_maker_pileup( l1ct::PuppiObj out_particles[8*16],
                          ap_uint<10> vertex_rand, 
                          ap_uint<8*n_pu_jets*pu_jet_npart> vz_resolution_rand, 
                          ap_uint<n_pu_jets*pu_jet_npart*10> hadronization_rand,
@@ -58,33 +56,33 @@ void event_maker_pileup( l1ct::PuppiObj out_particles[n_pu_jets*pu_jet_npart],
 #pragma HLS pipeline II=9
 #pragma HLS array_partition variable=out_particles complete
 
-  Parton partons[n_pu_jets*pu_jet_npart];
+  Parton partons[8*16];
   pileup_generator(partons, shower_rand, jetrand);
-  l1ct::PuppiObj presort[n_pu_jets*pu_jet_npart];
-  hadronize_event_template<n_pu_jets*pu_jet_npart>(partons, presort, vertex_rand, vz_resolution_rand, hadronization_rand);
-  for (int ichunk=0; ichunk<15; ++ichunk){ // need to add the logic for 8*16
-    #pragma HLS unroll
-    hybridBitonicSort::sort<8,8,true>(presort+ichunk*8, out_particles+ichunk*8);
-  }
+  hadronize_event_template<n_pu_jets*pu_jet_npart>(partons, out_particles, vertex_rand, vz_resolution_rand, hadronization_rand);
+
 }
 
 
 
-void bitpattern_pileup( PackedPuppiObj bitpattern[n_pu_jets*pu_jet_npart],
-                        ap_uint<10> vertex_rand,
-                        ap_uint<8*n_pu_jets*pu_jet_npart> vz_resolution_rand,
-                        ap_uint<n_pu_jets*pu_jet_npart*10> hadronization_rand,
-                        ap_uint<random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets> shower_rand,
-                        ap_uint<n_pu_jets*(lut_size+20)>  jetrand)
+void bitpattern_pileup( PackedPuppiObj bitpattern[8*16], ap_uint<10+8*n_pu_jets*pu_jet_npart+n_pu_jets*pu_jet_npart*10+random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets+n_pu_jets*(lut_size+20)> bigrand)
 {
 #pragma HLS pipeline II=9
 #pragma HLS array_partition variable=bitpattern complete
+#pragma HLS INTERFACE mode=ap_none port=bitpattern
+  
+  // im sorry for this
+  ap_uint<10> vertex_rand=bigrand(9,0);
+  ap_uint<8*n_pu_jets*pu_jet_npart> vz_resolution_rand=bigrand(8*n_pu_jets*pu_jet_npart+9, 10);
+  ap_uint<n_pu_jets*pu_jet_npart*10> hadronization_rand=bigrand(n_pu_jets*pu_jet_npart*10+8*n_pu_jets*pu_jet_npart+9, 8*n_pu_jets*pu_jet_npart+10);
+  ap_uint<random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets> shower_rand=bigrand(random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets+n_pu_jets*pu_jet_npart*10+8*n_pu_jets*pu_jet_npart+9,n_pu_jets*pu_jet_npart*10+8*n_pu_jets*pu_jet_npart+10);
+  ap_uint<n_pu_jets*(lut_size+20)>  jetrand=bigrand(n_pu_jets*(lut_size+20)+random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets+n_pu_jets*pu_jet_npart*10+8*n_pu_jets*pu_jet_npart+9,random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets+n_pu_jets*pu_jet_npart*10+8*n_pu_jets*pu_jet_npart+10);
+  
 
-  l1ct::PuppiObj out_particles[n_pu_jets*pu_jet_npart];
+  l1ct::PuppiObj out_particles[8*16];
   event_maker_pileup( out_particles, vertex_rand, vz_resolution_rand,
                       hadronization_rand, shower_rand, jetrand);
 
-  for (int i=0; i<n_pu_jets*pu_jet_npart; ++i){
+  for (int i=0; i<8*16; ++i){
     bitpattern[i]=out_particles[i].pack();
   }
 }
