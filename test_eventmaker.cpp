@@ -7,6 +7,7 @@
 #include <cstdint>
 
 
+const int nbigrand=10+n_pu_jets*pu_jet_npart*8+n_pu_jets*pu_jet_npart*10+random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets+n_pu_jets*(lut_size+20);
 
 int main(int argc, char **argv) {
 
@@ -17,18 +18,14 @@ int main(int argc, char **argv) {
   const unsigned int multiplicity=50;
   HumanReadablePatternSerializer dumper("output.dump");
 
-  for (unsigned int frame = 0; (frame < 5000) && ok; ++frame) {
+  for (unsigned int frame = 0; (frame < 50) && ok; ++frame) {
 
-    PackedPuppiObj out_particles[n_pu_jets*pu_jet_npart];
+    PackedPuppiObj out_particles[8*16];
 
     ap_uint<10> vertex_rand = xoshiro256ref.getrandom(frame==0,seed) & 1023;
-    ap_uint<n_pu_jets*pu_jet_npart*8>  vz_resolution_rand=xoshiro256ref.get_large_random<n_pu_jets*pu_jet_npart*8>(false, seed);
-    ap_uint<n_pu_jets*pu_jet_npart*10> hadronization_rand=xoshiro256ref.get_large_random<n_pu_jets*pu_jet_npart*10>(false, seed);
-    ap_uint<random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets> shower_rand=xoshiro256ref.get_large_random<random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets>(false, seed, true);
-    ap_uint<n_pu_jets*(lut_size+20)> jetrand = xoshiro256ref.get_large_random<n_pu_jets*(lut_size+20)>(false, seed);
+    ap_uint<nbigrand>  bigrand=xoshiro256ref.get_large_random<nbigrand>(false, seed);
 
-    bitpattern_pileup(out_particles, 
-                       vertex_rand, vz_resolution_rand , hadronization_rand, shower_rand, jetrand);
+    bitpattern_pileup(out_particles, bigrand);
 
     // now we are gonna store everything 
     l1ct::PuppiObj simplia_particles[n_pu_jets*pu_jet_npart];
