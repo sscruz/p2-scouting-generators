@@ -40,4 +40,6 @@ create_clock -period 2.777
 csim_design
 csynth_design
 
+export_design
+
 exit
