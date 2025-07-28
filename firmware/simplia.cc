@@ -216,7 +216,7 @@ void shower(const Parton theparticle, Parton out_particles[32], ap_uint<589> ran
 {
 #pragma HLS pipeline II=9
 #pragma HLS array_partition variable=out_particles complete
-  const pt_t min_particle_energy=2*4;
+  const pt_t min_particle_energy=0; // was 2*4
   return shower_template<16>(theparticle, out_particles, min_particle_energy, rand); // max_depth is max_depth-1
 }
 

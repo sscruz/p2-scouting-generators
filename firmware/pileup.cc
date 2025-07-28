@@ -10,7 +10,7 @@
 void _lut_pt_exp_init( pt_t pt_exp_lut[512] ){
 
   for (int i=0; i<512;++i){
-    pt_exp_lut[i]=((pu_jet_pt_min-pu_jet_pt_decay*log(1-float(i)/512.)))*4; // pt_t is in units of 0.25, so multiply by 4. with lut size 512, we get maximum pt =33
+    pt_exp_lut[i]=((pu_jet_pt_min-pu_jet_pt_decay*log(1-pow(float(i)/512.,2.))))*4; // pt_t is in units of 0.25, so multiply by 4. with lut size 512, we get maximum pt =33
   }
   
 }
