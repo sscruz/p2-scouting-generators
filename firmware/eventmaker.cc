@@ -38,52 +38,215 @@ l1ct::PuppiObj particle_to_parton(Parton part, ap_uint<10> rand)
 
 }
 
-void hadronize_event(Parton in_part[n_pu_jets*pu_jet_npart], l1ct::PuppiObj out_particles[n_pu_jets*pu_jet_npart], ap_uint<10> vertex_rand,
-                     ap_uint<8*n_pu_jets*pu_jet_npart> vz_resolution_rand, ap_uint<n_pu_jets*pu_jet_npart*10> hadronization_rand )
-{
-#pragma HLS pipeline II=9
-#pragma HLS array_partition variable=out_particles complete 
-  hadronize_event_template<n_pu_jets*pu_jet_npart>(in_part, out_particles, vertex_rand, vz_resolution_rand, hadronization_rand );
+// void event_maker_pileup( l1ct::PuppiObj out_particles[n_pu_jets*pu_jet_npart],
+//                          ap_uint<10> vertex_rand, 
+//                          ap_uint<8* pu_jet_npart> vz_resolution_rand[n_pu_jets], 
+//                          ap_uint<10*pu_jet_npart> hadronization_rand[n_pu_jets],
+//                          ap_uint<random_bits_per_splitting*(pu_jet_depth2*2-1)> shower_rand[n_pu_jets],
+//                          ap_uint<(lut_size+20)>  jetrand[n_pu_jets])
+// {
+// #pragma HLS pipeline II=9
+// #pragma HLS array_partition variable=out_particles complete
+// #pragma HLS ARRAY_PARTITION variable=vz_resolution_rand complete dim=1
+// #pragma HLS ARRAY_PARTITION variable=hadronization_rand complete dim=1
 
-}
+//   Parton partons[n_pu_jets*pu_jet_npart];
+  
+//   ap_uint<10> hadronization_rand_flat[pu_jet_npart * pu_jet_npart];
+//   ap_uint<8>  vz_resolution_rand_flat[n_pu_jets * pu_jet_npart];
 
-void event_maker_pileup( l1ct::PuppiObj out_particles[n_pu_jets*pu_jet_npart],
-                         ap_uint<10> vertex_rand, 
-                         ap_uint<8*n_pu_jets*pu_jet_npart> vz_resolution_rand, 
-                         ap_uint<n_pu_jets*pu_jet_npart*10> hadronization_rand,
-                         ap_uint<random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets> shower_rand,
-                         ap_uint<n_pu_jets*(lut_size+20)>  jetrand)
+// #pragma HLS ARRAY_PARTITION variable=vz_resolution_rand_flat complete dim=1
+// #pragma HLS ARRAY_PARTITION variable=hadronization_rand_flat complete dim=1
+
+  
+//   for (int i = 0; i < n_pu_jets; ++i) {
+// #pragma HLS UNROLL
+//     for (int j = 0; j < pu_jet_npart; ++j) {
+// #pragma HLS UNROLL
+
+//       int idx = i * pu_jet_npart + j;
+      
+//       int vz_bit_idx = j * 8;
+//       int hadr_bit_idx = j * 10;
+      
+//       vz_resolution_rand_flat[idx] = vz_resolution_rand[i].range(vz_bit_idx + 7, vz_bit_idx);
+//       hadronization_rand_flat[idx] = hadronization_rand[i].range(hadr_bit_idx + 9, hadr_bit_idx);
+//     }
+//   }
+    
+//   pileup_generator(partons, shower_rand, jetrand);
+
+//   hadronize_event_template<n_pu_jets*pu_jet_npart>(partons, out_particles, vertex_rand, vz_resolution_rand_flat, hadronization_rand_flat);
+
+// }
+
+void event_maker_pileup(
+    l1ct::PuppiObj out_particles[n_pu_jets * pu_jet_npart],
+    ap_uint<10> vertex_rand,
+    ap_uint<8 * pu_jet_npart> vz_resolution_rand[n_pu_jets],
+    ap_uint<10 * pu_jet_npart> hadronization_rand[n_pu_jets],
+    ap_uint<random_bits_per_splitting * (pu_jet_depth2 * 2 - 1)> shower_rand[n_pu_jets],
+    ap_uint<(lut_size + 20)> jetrand[n_pu_jets])
 {
 #pragma HLS pipeline II=9
 #pragma HLS array_partition variable=out_particles complete
+#pragma HLS array_partition variable=vz_resolution_rand complete dim=1
+#pragma HLS array_partition variable=hadronization_rand complete dim=1
+#pragma HLS array_partition variable=shower_rand complete dim=1
+#pragma HLS array_partition variable=jetrand complete dim=1
 
-  Parton partons[n_pu_jets*pu_jet_npart];
+  // Partons to be filled by pileup_generator
+  Parton partons[n_pu_jets * pu_jet_npart];
+#pragma HLS array_partition variable=partons complete dim=1
+
+  // Extracted values (local temporary arrays passed to hadronizer)
+  ap_uint<10> hadronization_rand_flat[n_pu_jets * pu_jet_npart];
+  ap_uint<8> vz_resolution_rand_flat[n_pu_jets * pu_jet_npart];
+#pragma HLS array_partition variable=hadronization_rand_flat complete dim=1
+#pragma HLS array_partition variable=vz_resolution_rand_flat complete dim=1
+
+  // Extract randomness directly with fully unrolled static access
+  for (int i = 0; i < n_pu_jets; ++i) {
+#pragma HLS UNROLL
+    for (int j = 0; j < pu_jet_npart; ++j) {
+#pragma HLS UNROLL
+      const int idx = i * pu_jet_npart + j;
+
+      const int vz_bit_idx = j * 8;
+      const int hadr_bit_idx = j * 10;
+
+      vz_resolution_rand_flat[idx] = vz_resolution_rand[i].range(vz_bit_idx + 7, vz_bit_idx);
+      hadronization_rand_flat[idx] = hadronization_rand[i].range(hadr_bit_idx + 9, hadr_bit_idx);
+    }
+  }
+
+  // Generate partons
   pileup_generator(partons, shower_rand, jetrand);
-  hadronize_event_template<n_pu_jets*pu_jet_npart>(partons, out_particles, vertex_rand, vz_resolution_rand, hadronization_rand);
 
+  // Final step: hadronize
+  hadronize_event_template<n_pu_jets * pu_jet_npart>(
+      partons,
+      out_particles,
+      vertex_rand,
+      vz_resolution_rand_flat,
+      hadronization_rand_flat);
 }
 
 
+// void bitpattern_pileup( PackedPuppiObj bitpattern[n_pu_jets*pu_jet_npart], ap_uint<10> vertex_rand, ap_uint<8*pu_jet_npart+pu_jet_npart*10+random_bits_per_splitting*(pu_jet_depth2*2-1)+(lut_size+20)> bigrand[n_pu_jets])
+// {
+// #pragma HLS pipeline II=9
+// #pragma HLS array_partition variable=bitpattern complete
+// #pragma HLS INTERFACE mode=ap_none port=bitpattern
 
-void bitpattern_pileup( PackedPuppiObj bitpattern[n_pu_jets*pu_jet_npart], ap_uint<10+8*n_pu_jets*pu_jet_npart+n_pu_jets*pu_jet_npart*10+random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets+n_pu_jets*(lut_size+20)> bigrand)
+//   const int vz_res_bits     = 8 * pu_jet_npart;
+//   const int hadron_bits     = pu_jet_npart * 10;
+//   const int shower_bits     = random_bits_per_splitting * (pu_jet_depth2 * 2 - 1);
+//   const int jet_bits        = lut_size + 20;
+//   const int total_bits      = vz_res_bits + hadron_bits + shower_bits + jet_bits;
+
+  
+
+//   ap_uint<vz_res_bits> vz_resolution_rand[n_pu_jets]; //  =bigrand(8*n_pu_jets*pu_jet_npart+9, 10);
+//   ap_uint<hadron_bits> hadronization_rand[n_pu_jets]; // =bigrand(n_pu_jets*pu_jet_npart*10+8*n_pu_jets*pu_jet_npart+9, 8*n_pu_jets*pu_jet_npart+10);
+//   ap_uint<shower_bits> shower_rand[n_pu_jets]; // =bigrand(random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets+n_pu_jets*pu_jet_npart*10+8*n_pu_jets*pu_jet_npart+9,n_pu_jets*pu_jet_npart*10+8*n_pu_jets*pu_jet_npart+10);
+//   ap_uint<jet_bits>    jetrand[n_pu_jets]; // =bigrand(n_pu_jets*(lut_size+20)+random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets+n_pu_jets*pu_jet_npart*10+8*n_pu_jets*pu_jet_npart+9,random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets+n_pu_jets*pu_jet_npart*10+8*n_pu_jets*pu_jet_npart+10);
+
+
+  
+//   for (int i = 0; i < n_pu_jets; i++) {
+//     ap_uint<total_bits> rand = bigrand[i];
+
+//     int start = 0;
+//     vz_resolution_rand[i] = rand.range(start + vz_res_bits - 1, start);
+    
+//     start += vz_res_bits;
+//     hadronization_rand[i] = rand.range(start + hadron_bits - 1, start);
+    
+//     start += hadron_bits;
+//     shower_rand[i] = rand.range(start + shower_bits - 1, start);
+    
+//     start += shower_bits;
+//     jetrand[i] = rand.range(start + jet_bits - 1, start);
+// }
+
+//   l1ct::PuppiObj out_particles[n_pu_jets*pu_jet_npart];
+//   event_maker_pileup( out_particles, vertex_rand, vz_resolution_rand,
+//                       hadronization_rand, shower_rand, jetrand);
+
+//   for (int i=0; i<n_pu_jets*pu_jet_npart; ++i){
+//     bitpattern[i]=out_particles[i].pack();
+//   }
+// }
+
+void bitpattern_pileup(
+    PackedPuppiObj bitpattern[n_pu_jets * pu_jet_npart],
+    ap_uint<10> vertex_rand,
+    ap_uint<
+        8 * pu_jet_npart +
+        pu_jet_npart * 10 +
+        random_bits_per_splitting * (pu_jet_depth2 * 2 - 1) +
+        (lut_size + 20)> bigrand[n_pu_jets])
 {
 #pragma HLS pipeline II=9
 #pragma HLS array_partition variable=bitpattern complete
-#pragma HLS INTERFACE mode=ap_none port=bitpattern
-  
-  // im sorry for this
-  ap_uint<10> vertex_rand=bigrand(9,0);
-  ap_uint<8*n_pu_jets*pu_jet_npart> vz_resolution_rand=bigrand(8*n_pu_jets*pu_jet_npart+9, 10);
-  ap_uint<n_pu_jets*pu_jet_npart*10> hadronization_rand=bigrand(n_pu_jets*pu_jet_npart*10+8*n_pu_jets*pu_jet_npart+9, 8*n_pu_jets*pu_jet_npart+10);
-  ap_uint<random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets> shower_rand=bigrand(random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets+n_pu_jets*pu_jet_npart*10+8*n_pu_jets*pu_jet_npart+9,n_pu_jets*pu_jet_npart*10+8*n_pu_jets*pu_jet_npart+10);
-  ap_uint<n_pu_jets*(lut_size+20)>  jetrand=bigrand(n_pu_jets*(lut_size+20)+random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets+n_pu_jets*pu_jet_npart*10+8*n_pu_jets*pu_jet_npart+9,random_bits_per_splitting*(pu_jet_depth2*2-1)*n_pu_jets+n_pu_jets*pu_jet_npart*10+8*n_pu_jets*pu_jet_npart+10);
+#pragma HLS interface mode=ap_none port=bitpattern
+#pragma HLS array_partition variable=bigrand complete dim=1
 
+  // Bit widths
+  const int vz_res_bits = 8 * pu_jet_npart;
+  const int hadron_bits = 10 * pu_jet_npart;
+  const int shower_bits = random_bits_per_splitting * (pu_jet_depth2 * 2 - 1);
+  const int jet_bits    = lut_size + 20;
 
-  l1ct::PuppiObj out_particles[n_pu_jets*pu_jet_npart];
-  event_maker_pileup( out_particles, vertex_rand, vz_resolution_rand,
-                      hadronization_rand, shower_rand, jetrand);
+  // Extracted input arrays
+  ap_uint<vz_res_bits> vz_resolution_rand[n_pu_jets];
+  ap_uint<hadron_bits> hadronization_rand[n_pu_jets];
+  ap_uint<shower_bits> shower_rand[n_pu_jets];
+  ap_uint<jet_bits>    jetrand[n_pu_jets];
 
-  for (int i=0; i<n_pu_jets*pu_jet_npart; ++i){
-    bitpattern[i]=out_particles[i].pack();
+#pragma HLS array_partition variable=vz_resolution_rand complete dim=1
+#pragma HLS array_partition variable=hadronization_rand complete dim=1
+#pragma HLS array_partition variable=shower_rand complete dim=1
+#pragma HLS array_partition variable=jetrand complete dim=1
+
+  // Unroll bigrand parsing
+  for (int i = 0; i < n_pu_jets; ++i) {
+#pragma HLS UNROLL
+    ap_uint<
+        8 * pu_jet_npart +
+        10 * pu_jet_npart +
+        random_bits_per_splitting * (pu_jet_depth2 * 2 - 1) +
+        (lut_size + 20)> rand = bigrand[i];
+
+    int start = 0;
+    vz_resolution_rand[i] = rand.range(start + vz_res_bits - 1, start);
+    start += vz_res_bits;
+
+    hadronization_rand[i] = rand.range(start + hadron_bits - 1, start);
+    start += hadron_bits;
+
+    shower_rand[i] = rand.range(start + shower_bits - 1, start);
+    start += shower_bits;
+
+    jetrand[i] = rand.range(start + jet_bits - 1, start);
+  }
+
+  // Call the main function
+  l1ct::PuppiObj out_particles[n_pu_jets * pu_jet_npart];
+#pragma HLS array_partition variable=out_particles complete dim=1
+
+  event_maker_pileup(
+      out_particles,
+      vertex_rand,
+      vz_resolution_rand,
+      hadronization_rand,
+      shower_rand,
+      jetrand);
+
+  // Convert to PackedPuppiObj
+  for (int i = 0; i < n_pu_jets * pu_jet_npart; ++i) {
+#pragma HLS UNROLL
+    bitpattern[i] = out_particles[i].pack();
   }
 }
