@@ -193,7 +193,7 @@ template<unsigned int max_depth2>
 void shower_template(const Parton theparticle, Parton out_particles[max_depth2*2], const pt_t min_particle_energy, ap_uint<random_bits_per_splitting*(max_depth2*2-1)> rand)
 {
 
-#pragma HLS pipeline II=9
+#pragma HLS pipeline II=1
 #pragma HLS array_partition variable=out_particles complete
 #ifdef DEBUG
   print_ap(rand);

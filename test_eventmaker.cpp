@@ -13,35 +13,26 @@ int main(int argc, char **argv) {
 
   bool ok = true;
   int seed=42;
-  Xoshiro256ssRef xoshiro256ref;
 
   const unsigned int multiplicity=50;
   HumanReadablePatternSerializer dumper("output.dump");
 
-  for (unsigned int nburn = 0; nburn < 5000; ++nburn){
-    xoshiro256ref.getrandom(nburn==0,seed);
-  }
-
-  for (unsigned int frame = 0; (frame < 20) && ok; ++frame) {
-
-    PackedPuppiObj out_particles[n_pu_jets*pu_jet_npart];
-
-    ap_uint<10> vertex_rand = xoshiro256ref.getrandom(false,seed) & 1023;
-    ap_uint<n_rand_per_jet>  bigrand[n_pu_jets];
-    for (int i=0; i < n_pu_jets; ++i){
-      bigrand[i]=xoshiro256ref.get_large_random<n_rand_per_jet>(false, seed);
+  bool setseed=true;
+  for (unsigned int frame = 0; (frame < 50) && ok; ++frame) {
+    printf("New event\n");
+    PackedPuppiObj out_particles[80*pu_jet_npart];
+    for (int ijet = 0;ijet<80;++ijet){
+      generate_one_pu_jet( out_particles + pu_jet_npart*ijet, seed, setseed);
+      setseed=false;
     }
-
-    bitpattern_pileup(out_particles, vertex_rand, bigrand);
-
 
     // now we are gonna store everything 
-    l1ct::PuppiObj simplia_particles[n_pu_jets*pu_jet_npart];
+    l1ct::PuppiObj simplia_particles[80*pu_jet_npart];
     int npuppi=0;
-    for(int i=0;i<n_pu_jets*pu_jet_npart;++i){
+    for(int i=0;i<80*pu_jet_npart;++i){
       simplia_particles[i] = l1ct::PuppiObj::unpack(out_particles[i]);
     }
-    dumper.dump_puppi(n_pu_jets*pu_jet_npart, "ref", simplia_particles);
+    dumper.dump_puppi(80*pu_jet_npart, "ref", simplia_particles);
 
   }
 

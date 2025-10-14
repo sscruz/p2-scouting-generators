@@ -19,9 +19,10 @@ file copy -force "proj_simplia_luts/solution/csim/build/luts.h" "firmware/luts.h
 
 open_project -reset "proj_eventmaker"
 # specify the name of the function to synthetize
-set_top bitpattern_pileup
+set_top generate_one_pu_jet
 # load source code for synthesis
 
+add_files firmware/xoshiro256.cc -cflags ${cflags}
 add_files firmware/data.cc -cflags ${cflags}
 add_files firmware/simplia.cc -cflags ${cflags}
 add_files firmware/pileup.cc -cflags ${cflags}
@@ -41,5 +42,6 @@ csim_design
 csynth_design
 
 export_design
+close_project
 
 exit

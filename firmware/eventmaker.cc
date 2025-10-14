@@ -1,3 +1,4 @@
+#include "xoshiro256.h" 
 #include "eventmaker.h"
 #include "pileup.h"
 #include "bitonic_hybrid.h"
@@ -45,7 +46,7 @@ l1ct::PuppiObj particle_to_parton(Parton part, ap_uint<10> rand)
 //                          ap_uint<random_bits_per_splitting*(pu_jet_depth2*2-1)> shower_rand[n_pu_jets],
 //                          ap_uint<(lut_size+20)>  jetrand[n_pu_jets])
 // {
-// #pragma HLS pipeline II=9
+// #pragma HLS pipeline II=1
 // #pragma HLS array_partition variable=out_particles complete
 // #pragma HLS ARRAY_PARTITION variable=vz_resolution_rand complete dim=1
 // #pragma HLS ARRAY_PARTITION variable=hadronization_rand complete dim=1
@@ -88,7 +89,7 @@ void event_maker_pileup(
     ap_uint<random_bits_per_splitting * (pu_jet_depth2 * 2 - 1)> shower_rand[n_pu_jets],
     ap_uint<(lut_size + 20)> jetrand[n_pu_jets])
 {
-#pragma HLS pipeline II=9
+#pragma HLS pipeline II=1
 #pragma HLS array_partition variable=out_particles complete
 #pragma HLS array_partition variable=vz_resolution_rand complete dim=1
 #pragma HLS array_partition variable=hadronization_rand complete dim=1
@@ -135,7 +136,7 @@ void event_maker_pileup(
 
 // void bitpattern_pileup( PackedPuppiObj bitpattern[n_pu_jets*pu_jet_npart], ap_uint<10> vertex_rand, ap_uint<8*pu_jet_npart+pu_jet_npart*10+random_bits_per_splitting*(pu_jet_depth2*2-1)+(lut_size+20)> bigrand[n_pu_jets])
 // {
-// #pragma HLS pipeline II=9
+// #pragma HLS pipeline II=1
 // #pragma HLS array_partition variable=bitpattern complete
 // #pragma HLS INTERFACE mode=ap_none port=bitpattern
 
@@ -188,10 +189,11 @@ void bitpattern_pileup(
         random_bits_per_splitting * (pu_jet_depth2 * 2 - 1) +
         (lut_size + 20)> bigrand[n_pu_jets])
 {
-#pragma HLS pipeline II=9
+#pragma HLS pipeline II=1
 #pragma HLS array_partition variable=bitpattern complete
 #pragma HLS interface mode=ap_none port=bitpattern
 #pragma HLS array_partition variable=bigrand complete dim=1
+
 
   // Bit widths
   const int vz_res_bits = 8 * pu_jet_npart;
@@ -212,6 +214,7 @@ void bitpattern_pileup(
 
   // Unroll bigrand parsing
   for (int i = 0; i < n_pu_jets; ++i) {
+
 #pragma HLS UNROLL
     ap_uint<
         8 * pu_jet_npart +
@@ -232,6 +235,7 @@ void bitpattern_pileup(
     jetrand[i] = rand.range(start + jet_bits - 1, start);
   }
 
+
   // Call the main function
   l1ct::PuppiObj out_particles[n_pu_jets * pu_jet_npart];
 #pragma HLS array_partition variable=out_particles complete dim=1
@@ -244,9 +248,51 @@ void bitpattern_pileup(
       shower_rand,
       jetrand);
 
+
   // Convert to PackedPuppiObj
   for (int i = 0; i < n_pu_jets * pu_jet_npart; ++i) {
 #pragma HLS UNROLL
+    if (out_particles[i].hwPt < 2) out_particles[i].clear(); // dropping everything with pt < 2
     bitpattern[i] = out_particles[i].pack();
   }
+  
 }
+
+void generate_one_pu_jet( PackedPuppiObj bitpattern[pu_jet_npart],
+                          ap_uint<64> seed, 
+                          bool setseed)
+{
+
+#pragma HLS pipeline II=1
+#pragma HLS array_partition variable=bitpattern complete
+#pragma HLS interface mode=ap_none port=bitpattern
+
+  ap_uint<64> random[5];
+  xoshiro256hw_5(setseed, seed, random);
+
+  const int nbits_necessary = 8  * pu_jet_npart + pu_jet_npart * 10 + random_bits_per_splitting * (pu_jet_depth2 * 2 - 1) + (lut_size + 20);
+
+  ap_uint<nbits_necessary> combined[1]; 
+  for (int i = 0; i < 5; i++) {
+#pragma HLS unroll
+    int shift = i * 64;
+    if (shift < nbits_necessary) {
+      int bits_to_copy = (shift + 64 <= 306) ? 64 : (306 - shift);
+      combined[0].range(shift + bits_to_copy - 1, shift) = random[i].range(bits_to_copy - 1, 0);
+    }
+  }
+
+
+  bitpattern_pileup( bitpattern, 0, combined);
+
+  // int npart=0;
+  // for (int i=0; i<pu_jet_npart; i++){
+  //   if (l1ct::PuppiObj::unpack(bitpattern[i]).hwPt > 0) npart++;
+  // }
+  // printf("npart = %d\n", npart);
+       
+
+}
+
+
+  

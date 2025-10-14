@@ -1,12 +1,11 @@
 #ifndef ALGO_DATA_H
 #define ALGO_DATA_H
-#define AP_INT_MAX_W 30000
 
 #include "ap_int.h"
 #include "fromcmssw.h" 
 
 
-#define n_pu_jets 80
+#define n_pu_jets 1 // in principle shouldn't change this because some functions downstream use this
 #define pu_jet_depth 2
 #define pu_jet_depth2 4
 #define pu_jet_npart 8

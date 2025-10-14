@@ -33,3 +33,31 @@ ap_uint<64> xoshiro256hw(bool setseed, ap_uint<64> seed) {
   }
   return step2;
 }
+
+void xoshiro256hw_5(bool setseed, ap_uint<64> seed, ap_uint<64> outputs[5]) {
+  #pragma HLS pipeline II = 1
+  static ap_uint<64> state[4] = { 0, 0, 0, 0 };
+  #pragma HLS array_partition variable = state complete
+  if (setseed) {
+    state[0] = seed ^ 0x6b54c6575a2c794b;
+    state[1] = rol<13>(seed) ^ 0x514e9359bb2950cb;
+    state[2] = rol<27>(seed) ^ 0xc62c17550e3d1904;
+    state[3] = rol<42>(seed) ^ 0xf47e648fdd3da813;
+  }
+
+  for (int i=0; i<5; ++i){
+    ap_uint<64> step0 = (state[1] << 2)+state[1]; // i.e. *5
+    ap_uint<64> step1 = rol<7>(step0);
+    ap_uint<64> step2 = step1 + (step1 << 3); // i.e. * 9
+    outputs[i] = step2;
+    
+    ap_uint<64> t = state[1] << 17;
+    state[2] ^= state[0];
+    state[3] ^= state[1];
+    state[1] ^= state[2];
+    state[0] ^= state[3];
+    state[2] ^= t;
+    state[3] = rol<45>(state[3]);
+  }
+
+}

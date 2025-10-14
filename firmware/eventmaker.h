@@ -55,6 +55,6 @@ void hadronize_event_template(Parton in_partons[multiplicity], l1ct::PuppiObj ou
 
 void event_maker_pileup( l1ct::PuppiObj out_particles[n_pu_jets*pu_jet_npart],  ap_uint<10> vertex_rand, ap_uint<8*pu_jet_npart> vz_resolution_rand[n_pu_jets], ap_uint<pu_jet_npart*10> hadronization_rand[n_pu_jets], ap_uint<random_bits_per_splitting*(pu_jet_depth2*2-1)> bigrand[n_pu_jets], ap_uint<(lut_size+20)>  jetrand [n_pu_jets]);
 void bitpattern_pileup( PackedPuppiObj out_particles[n_pu_jets*pu_jet_npart] ,  ap_uint<10> vertex_rand, ap_uint<8*pu_jet_npart+pu_jet_npart*10+random_bits_per_splitting*(pu_jet_depth2*2-1)+(lut_size+20)> bigrand[n_pu_jets]);
-
+void generate_one_pu_jet(PackedPuppiObj bitpattern[pu_jet_npart],ap_uint<64> seed,bool setseed);
 
 #endif

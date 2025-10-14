@@ -35,7 +35,7 @@ void get_pile_up_jets( Parton jets[n_pu_jets], ap_uint<(lut_size+20)> rand[n_pu_
 void pileup_generator(Parton out_particles[n_pu_jets*pu_jet_npart], ap_uint<random_bits_per_splitting*(pu_jet_depth2*2-1)> bigrand[n_pu_jets], 
                       ap_uint<(lut_size+20)> jetrand[n_pu_jets])
 {
-#pragma HLS pipeline II=9
+#pragma HLS pipeline II=1
 #pragma HLS array_partition variable=out_particles complete 
   Parton jets[n_pu_jets]; get_pile_up_jets( jets, jetrand);
   const pt_t min_particle_energy=2; // 0.5 in 0.25 GeV units
